@@ -39,6 +39,42 @@ Getting started with llama.cpp is straightforward. Here are several ways to inst
 - Download pre-built binaries from the [releases page](https://github.com/ggml-org/llama.cpp/releases)
 - Build from source by cloning this repository - check out [our build guide](docs/build.md)
 
+
+## RotorQuant Integration (Experimental)
+
+This modified version of `llama.cpp` includes experimental support for the [rotorquant](https://github.com/scrya-com/rotorquant) quantization method, enabling highly efficient inference with ultra-low-bit quantized models.
+
+### About RotorQuant
+RotorQuant is a research quantization technique designed for extreme compression of LLM weights, enabling large models to run on limited hardware. The implementation is included in the `rotorquant/` directory of this repository.
+
+### How to Use RotorQuant in llama.cpp
+RotorQuant is integrated as a new quantization type. You can run models quantized with rotorquant (e.g., certain Gemma or Llama variants) using the standard `llama-cli` interface.
+
+#### Example: Running a RotorQuant Model
+
+Suppose you have downloaded a rotorquant-quantized model such as `gemma-4-26B-A4B-it-UD-IQ2_M.gguf` (see Hugging Face or the Unsloth repo for sources). To run it on an Intel i5 MacBook (16GB RAM), use:
+
+```bash
+./build/bin/llama-cli -m gemma-4-26B-A4B-it-UD-IQ2_M.gguf -t 4 -c 2048 -ngl 0
+```
+
+**Recommended flags:**
+- `-t 4` — Use 4 threads (adjust to your CPU core count)
+- `-c 2048` — Context window (keep low for limited RAM)
+- `-ngl 0` — Disable GPU offloading (recommended for Intel Macs)
+
+**Note:**
+- The `--memory-f32` and `-i` flags are not supported in all builds. Omit them if you see errors.
+- Running 26B models on Intel i5 is very demanding. Expect slow generation and high RAM usage. For better performance, use smaller models (e.g., Gemma-4-9B-it).
+
+#### Testing RotorQuant
+To verify rotorquant is working:
+1. Ensure you have built this repo from source (see below).
+2. Download a compatible rotorquant model (e.g., from Unsloth or Hugging Face).
+3. Run the above command. If the model loads and generates output, rotorquant is active.
+
+For more details or to experiment with rotorquant kernels, see the `rotorquant/` directory and its README.
+
 Once installed, you'll need a model to work with. Head to the [Obtaining and quantizing models](#obtaining-and-quantizing-models) section to learn more.
 
 Example command:

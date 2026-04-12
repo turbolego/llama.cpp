@@ -1,9 +1,13 @@
+
 #pragma once
 
 #define GGML_COMMON_DECL_C
 #include "ggml-common.h"
-
 #include "ggml.h"
+
+// RotorQuant quantization (stubs)
+GGML_API void quantize_row_rotor_ref(const float * GGML_RESTRICT x, void * GGML_RESTRICT y, int64_t k);
+GGML_API void dequantize_row_rotor(const void * GGML_RESTRICT x, float * GGML_RESTRICT y, int64_t k);
 
 // GGML internal header
 

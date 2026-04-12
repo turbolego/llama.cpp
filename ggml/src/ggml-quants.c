@@ -1,3 +1,14 @@
+// RotorQuant quantization (stubs)
+#include "ggml-quants.h" // Ensure GGML_RESTRICT and GGML_API are defined
+void quantize_row_rotor_ref(const float * GGML_RESTRICT x, void * GGML_RESTRICT y, int64_t k) {
+    // TODO: Implement rotorquant quantization
+    (void)x; (void)y; (void)k;
+}
+
+void dequantize_row_rotor(const void * GGML_RESTRICT x, float * GGML_RESTRICT y, int64_t k) {
+    // TODO: Implement rotorquant dequantization
+    (void)x; (void)y; (void)k;
+}
 #define GGML_COMMON_IMPL_C
 #include "ggml-common.h"
 

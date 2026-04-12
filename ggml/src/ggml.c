@@ -607,6 +607,14 @@ FILE * ggml_fopen(const char * fname, const char * mode) {
 }
 
 static const struct ggml_type_traits type_traits[GGML_TYPE_COUNT] = {
+        [GGML_TYPE_ROTOR] = {
+            .type_name                = "rotor",
+            .blck_size                = 0, // TODO: set correct block size
+            .type_size                = 0, // TODO: set correct type size
+            .is_quantized             = true,
+            .to_float                 = (ggml_to_float_t) dequantize_row_rotor,
+            .from_float_ref           = (ggml_from_float_t) quantize_row_rotor_ref,
+        },
     [GGML_TYPE_I8] = {
         .type_name                = "i8",
         .blck_size                = 1,
