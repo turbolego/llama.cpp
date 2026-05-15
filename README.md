@@ -181,68 +181,65 @@ which llama-server
 
 The llama.vscode extension manages multiple AI services (completions, chat, embeddings, tools). Open your VS Code settings (File → Preferences → Settings, or Cmd+,) and add a new environment configuration:
 
-**Search for "llama-vscode.environments"** and add this environment entry:
+**Search for "llama-vscode.envs_list"** and add this environment entry (replace the entire array or update the first entry):
 
 ```json
-"llama-vscode.environments": [
+"llama-vscode.envs_list": [
     {
         "name": "Intel Mac CPU-Only (16GB RAM) - Full Stack",
-        "description": "Local llama.cpp servers on Intel MacBook Pro i5 (4 services)",
-        "completions": {
+        "description": "Local llama.cpp servers on Intel MacBook Pro i5 (4 services) - Fork v9163",
+        "completion": {
             "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
+            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -c 4096 -ub 512 -b 512 --cache-reuse 256 --port 8000",
             "endpoint": "http://127.0.0.1:8000",
-            "model_name_for_provider": "gpt2",
-            "api_key_required": false,
-            "local_start_command": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -c 4096 -ub 512 -b 512 --cache-reuse 256 --port 8000"
+            "aiModel": "",
+            "isKeyRequired": false
         },
         "chat": {
             "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
-            "endpoint": "http://127.0.0.1:8011",
-            "model_name_for_provider": "gpt2",
-            "api_key_required": false,
-            "local_start_command": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -c 4096 -ub 512 -b 512 -np 1 --cache-reuse 256 --port 8011"
+            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -c 4096 -ub 512 -b 512 -np 1 --cache-reuse 256 --port 8011",
+            "endpoint": "http://127.0.0.1:8011"
         },
         "embeddings": {
             "name": "Nomic-Embed-Text-V2-GGUF",
-            "endpoint": "http://127.0.0.1:8010",
-            "model_name_for_provider": "gpt2",
-            "api_key_required": false,
-            "local_start_command": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010"
+            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+            "endpoint": "http://127.0.0.1:8010"
         },
         "tools": {
-            "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU)",
+            "name": "Qwen3.5-2B-GGUF:Q4_K_M (CPU Only - No GPU)",
+            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf unsloth/Qwen3.5-2B-GGUF -c 8192 -ub 128 -b 128 -ngl 0 --no-warmup --port 8009",
             "endpoint": "http://127.0.0.1:8009",
-            "model_name_for_provider": "gpt2",
-            "api_key_required": false,
-            "local_start_command": "llama-server -hf unsloth/Qwen3.5-2B-GGUF -c 2048 -ub 256 -b 256 --port 8009"
+            "aiModel": "",
+            "isKeyRequired": false
         },
         "agent": {
             "name": "default",
             "description": "This is the default agent."
         },
-        "completions_enabled": true,
-        "rag_enabled": true,
-        "env_start_last": true
+        "complEnabled": true,
+        "ragEnabled": true,
+        "envStartLastUsed": true
     }
 ]
 ```
 
-**Configuration explained:**
-- **completions** (Port 8000): Qwen2.5-Coder model for inline code suggestions
-- **chat** (Port 8011): Qwen2.5-Coder-Instruct model for conversational AI
-- **embeddings** (Port 8010): Nomic-Embed-Text-V2 for semantic search and RAG
-- **tools** (Port 8009): Qwen3.5-2B for tool/function calling
-- **endpoint**: HTTP server address (localhost with specific ports for each service)
-- **local_start_command**: Command to start the service (auto-downloads from Hugging Face if needed)
-- **completions_enabled**: Enable/disable code completions
-- **rag_enabled**: Enable/disable Retrieval-Augmented Generation
-- **env_start_last**: Automatically start this environment on next VS Code launch
+**Configuration explained (Updated Format - camelCase):**
+- **completion** (Port 8000): Qwen2.5-Coder-1.5B-Q8_0 for inline code suggestions; context=4096, batch=512
+- **chat** (Port 8011): Qwen2.5-Coder-1.5B-Instruct-Q8_0 for conversational AI; context=4096, batch=512, n_parallel=1
+- **embeddings** (Port 8010): Nomic-Embed-Text-V2 for semantic search and RAG; context=2048
+- **tools** (Port 8009): Qwen3.5-2B-Q4_K_M for tool/function calling; context=8192, batch=128, no GPU (-ngl 0), no warmup
+- **endpoint**: HTTP server address (127.0.0.1 with specific ports for each service)
+- **localStartCommand**: Full path to fork binary + model + parameters. Auto-downloads from Hugging Face on first run
+- **complEnabled**: Enable/disable code completions
+- **ragEnabled**: Enable/disable Retrieval-Augmented Generation
+- **envStartLastUsed**: Automatically start this environment on next VS Code launch
 
-**Note:** This configuration uses Homebrew-installed `llama-server` (v9140) which is automatically in your PATH. To verify:
-```bash
-which llama-server
-# Should output: /usr/local/bin/llama-server
-```
+**Important Notes:**
+1. This configuration uses the **fork binary** at `/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server` (v9163 with rotorquant support)
+2. Context window tuning:
+   - Completion & Chat: 4096 tokens (room for code context + generation)
+   - Tools: 8192 tokens (large prompts from llama-vscode + 1800+ token responses)
+3. The `-ngl 0 --no-warmup` flags on tools service prevent GPU memory allocation crashes on Intel Iris GPU
 
 ### Step 6: Configure llama-vscode Basic Settings
 
