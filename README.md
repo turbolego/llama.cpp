@@ -190,14 +190,14 @@ The llama.vscode extension manages multiple AI services (completions, chat, embe
         "description": "Local llama.cpp servers on Intel MacBook Pro i5 (4 services) - Fork v9163",
         "completion": {
             "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
-            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -c 4096 -ub 512 -b 512 --cache-reuse 256 --port 8000",
+            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -c 8192 -ub 512 -b 512 --cache-reuse 256 --port 8000",
             "endpoint": "http://127.0.0.1:8000",
             "aiModel": "",
             "isKeyRequired": false
         },
         "chat": {
             "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
-            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -c 4096 -ub 512 -b 512 -np 1 --cache-reuse 256 --port 8011",
+            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -c 8192 -ub 512 -b 512 -np 1 --cache-reuse 256 --port 8011",
             "endpoint": "http://127.0.0.1:8011"
         },
         "embeddings": {
@@ -207,7 +207,7 @@ The llama.vscode extension manages multiple AI services (completions, chat, embe
         },
         "tools": {
             "name": "Qwen3.5-2B-GGUF:Q4_K_M (CPU Only - No GPU)",
-            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf unsloth/Qwen3.5-2B-GGUF -c 8192 -ub 128 -b 128 -ngl 0 --no-warmup --port 8009",
+            "localStartCommand": "/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server -hf unsloth/Qwen3.5-2B-GGUF -c 16384 -ub 128 -b 128 -ngl 0 --no-warmup --port 8009",
             "endpoint": "http://127.0.0.1:8009",
             "aiModel": "",
             "isKeyRequired": false
@@ -224,10 +224,10 @@ The llama.vscode extension manages multiple AI services (completions, chat, embe
 ```
 
 **Configuration explained (Updated Format - camelCase):**
-- **completion** (Port 8000): Qwen2.5-Coder-1.5B-Q8_0 for inline code suggestions; context=4096, batch=512
-- **chat** (Port 8011): Qwen2.5-Coder-1.5B-Instruct-Q8_0 for conversational AI; context=4096, batch=512, n_parallel=1
+- **completion** (Port 8000): Qwen2.5-Coder-1.5B-Q8_0 for inline code suggestions; context=8192, batch=512
+- **chat** (Port 8011): Qwen2.5-Coder-1.5B-Instruct-Q8_0 for conversational AI; context=8192, batch=512, n_parallel=1
 - **embeddings** (Port 8010): Nomic-Embed-Text-V2 for semantic search and RAG; context=2048
-- **tools** (Port 8009): Qwen3.5-2B-Q4_K_M for tool/function calling; context=8192, batch=128, no GPU (-ngl 0), no warmup
+- **tools** (Port 8009): Qwen3.5-2B-Q4_K_M for tool/function calling; context=16384, batch=128, no GPU (-ngl 0), no warmup
 - **endpoint**: HTTP server address (127.0.0.1 with specific ports for each service)
 - **localStartCommand**: Full path to fork binary + model + parameters. Auto-downloads from Hugging Face on first run
 - **complEnabled**: Enable/disable code completions
@@ -237,7 +237,7 @@ The llama.vscode extension manages multiple AI services (completions, chat, embe
 **Important Notes:**
 1. This configuration uses the **fork binary** at `/Users/ciberloaner/Documents/GitHub/llama.cpp/build/bin/llama-server` (v9163 with rotorquant support)
 2. Context window tuning:
-   - Completion & Chat: 4096 tokens (room for code context + generation)
+   - Completion & Chat: 8192 tokens (larger code files + context + generation)
    - Tools: 8192 tokens (large prompts from llama-vscode + 1800+ token responses)
 3. The `-ngl 0 --no-warmup` flags on tools service prevent GPU memory allocation crashes on Intel Iris GPU
 
@@ -325,11 +325,18 @@ def calculate_sum(numbers):
 - Subsequent completions are cached and faster (~2-5 seconds per request)
 - Performance improves as context builds
 
-**Problem: "AI not responding" in VS Code**
-- Check that all 4 services started: `ps aux | grep llama-server` should show 4 processes
-- Verify ports are listening: `lsof -i -P -n | grep llama`
-- Check settings.json has correct environment selected in `llama-vscode.environments`
-- Review VS Code Output panel (View → Output → "llama.vscode") for errors
+**Problem: "Model generates short responses or seems confused"**
+- Likely cause: Chat history is accumulating and consuming the context window
+- Solution: Clear chat history in VS Code
+  - VS Code Chat: Open Chat view → click the trash/delete icon at the top
+  - Or start a new Chat session (View → Chat, create new session)
+  - For multi-turn conversations, this resets the context but frees ~1000+ tokens
+
+**Tip: Check context usage**
+In llama-vscode output, you'll see `n_tokens = X` in the logs. If prompt tokens consistently exceed 50% of context window, consider:
+- Clearing chat history more frequently
+- Reducing the number of previous messages kept
+- Increasing context window further (edit settings.json `-c` flag)
 
 **Tip: Check actual inference speed**
 ```bash
