@@ -90,6 +90,295 @@ llama-cli -hf ggml-org/gemma-3-1b-it-GGUF
 llama-server -hf ggml-org/gemma-3-1b-it-GGUF
 ```
 
+## llama.vscode: AI-Powered Code Completions in VS Code
+
+The [llama.vscode](https://github.com/ggml-org/llama.vscode) extension brings Fill-In-The-Middle (FIM) completions and AI chat directly into VS Code, using a locally-running `llama-server`. This chapter demonstrates a complete setup using RotorQuant quantization on a 2018 MacBook Pro with Intel i5 and 16GB RAM, enabling 26B-parameter models to run locally.
+
+### Hardware Requirements
+
+This guide uses a **2018 MacBook Pro with Intel i5, 16GB RAM** as the baseline. The setup works on similar or better hardware:
+
+- **CPU-based inference**: Intel i5 or equivalent (4+ cores)
+- **RAM**: Minimum 16GB (tight but functional with reduced context)
+- **Storage**: ~15GB for Gemma-4-26B RotorQuant model
+- **GPU**: Not required (CPU inference works fine for coding completions with reduced latency expectations)
+
+**Performance expectations**: ~3-5 tokens/sec generation speed (suitable for coding completions)
+
+### Step 1: Build llama.cpp with RotorQuant Support
+
+Clone and build from this repository:
+
+```bash
+git clone https://github.com/ggml-org/llama.cpp.git
+cd llama.cpp
+mkdir build && cd build
+cmake ..
+cmake --build . --config Release
+```
+
+The build produces two key binaries:
+- `./build/bin/llama-cli` — Command-line interface for testing models
+- `./build/bin/llama-server` — HTTP server (used by llama.vscode)
+
+### Step 2: Download Gemma-4-26B RotorQuant Model
+
+Download the ultra-compressed RotorQuant quantized Gemma-4 model from Hugging Face:
+
+```bash
+# Using llama.cpp's built-in downloader
+./build/bin/llama-cli -hf unsloth/gemma-4-26B-A4B-it-GGUF:gemma-4-26B-A4B-it-UD-IQ2_M.gguf
+
+# Or download manually via curl (9.33 GB)
+# https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/blob/main/gemma-4-26B-A4B-it-UD-IQ2_M.gguf
+```
+
+The model will be cached in `~/.cache/huggingface/` (shared across llama.cpp tools).
+
+**Model specs:**
+- Format: GGUF (IQ2_M quantization, 2.7 bits/weight)
+- Size: 9.33 GB on disk
+- Parameters: 25.23B (base 26B model)
+- Architecture: Gemma 4 with 30 layers, 2816 hidden dims, 16 attention heads, 128 experts/8 active
+
+### Step 3: Install llama.vscode Extension
+
+Install the extension in VS Code:
+
+1. Open VS Code
+2. Go to **Extensions** (Cmd+Shift+X)
+3. Search for "llama-vscode" (published by ggml-org)
+4. Click **Install**
+
+Or install via command line:
+```bash
+code --install-extension ggml-org.llama-vscode
+```
+
+### Step 4: Add llama.cpp Build Directory to PATH
+
+The extension runs `llama-server` by name, so it must be findable in your shell. Add the build directory to your shell configuration:
+
+**For zsh (default on modern macOS):**
+```bash
+echo 'export PATH="/path/to/llama.cpp/build/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**For bash:**
+```bash
+echo 'export PATH="/path/to/llama.cpp/build/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Verify the command is findable:
+```bash
+which llama-server
+# Should print: /path/to/llama.cpp/build/bin/llama-server
+```
+
+### Step 5: Configure llama.vscode Environment
+
+The llama.vscode extension manages multiple AI services (completions, chat, embeddings, tools). Open your VS Code settings (File → Preferences → Settings, or Cmd+,) and add a new environment configuration:
+
+**Search for "llama-vscode.environments"** and add this environment entry:
+
+```json
+"llama-vscode.environments": [
+    {
+        "name": "Intel Mac CPU-Only (16GB RAM) - Full Stack",
+        "description": "Local llama.cpp servers on Intel MacBook Pro i5 (4 services)",
+        "completions": {
+            "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
+            "endpoint": "http://127.0.0.1:8000",
+            "model_name_for_provider": "gpt2",
+            "api_key_required": false,
+            "local_start_command": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -c 4096 -ub 512 -b 512 --cache-reuse 256 --port 8000"
+        },
+        "chat": {
+            "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
+            "endpoint": "http://127.0.0.1:8011",
+            "model_name_for_provider": "gpt2",
+            "api_key_required": false,
+            "local_start_command": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -c 4096 -ub 512 -b 512 -np 1 --cache-reuse 256 --port 8011"
+        },
+        "embeddings": {
+            "name": "Nomic-Embed-Text-V2-GGUF",
+            "endpoint": "http://127.0.0.1:8010",
+            "model_name_for_provider": "gpt2",
+            "api_key_required": false,
+            "local_start_command": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010"
+        },
+        "tools": {
+            "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU)",
+            "endpoint": "http://127.0.0.1:8009",
+            "model_name_for_provider": "gpt2",
+            "api_key_required": false,
+            "local_start_command": "llama-server -hf unsloth/Qwen3.5-2B-GGUF -c 2048 -ub 256 -b 256 --port 8009"
+        },
+        "agent": {
+            "name": "default",
+            "description": "This is the default agent."
+        },
+        "completions_enabled": true,
+        "rag_enabled": true,
+        "env_start_last": true
+    }
+]
+```
+
+**Configuration explained:**
+- **completions** (Port 8000): Qwen2.5-Coder model for inline code suggestions
+- **chat** (Port 8011): Qwen2.5-Coder-Instruct model for conversational AI
+- **embeddings** (Port 8010): Nomic-Embed-Text-V2 for semantic search and RAG
+- **tools** (Port 8009): Qwen3.5-2B for tool/function calling
+- **endpoint**: HTTP server address (localhost with specific ports for each service)
+- **local_start_command**: Command to start the service (auto-downloads from Hugging Face if needed)
+- **completions_enabled**: Enable/disable code completions
+- **rag_enabled**: Enable/disable Retrieval-Augmented Generation
+- **env_start_last**: Automatically start this environment on next VS Code launch
+
+**Note:** This configuration uses Homebrew-installed `llama-server` (v9140) which is automatically in your PATH. To verify:
+```bash
+which llama-server
+# Should output: /usr/local/bin/llama-server
+```
+
+### Step 6: Configure llama-vscode Basic Settings
+
+Add these settings to your VS Code `settings.json` (open with Cmd+Shift+P → "Preferences: Open Settings (JSON)"):
+
+```json
+/* Llama.vscode Configuration - Core Settings */
+"llama-vscode.enabled": true,
+"llama-vscode.auto": true,
+"llama-vscode.rag_enabled": true,
+"llama-vscode.env_start_last_used": true,
+"llama-vscode.env_start_last_used_confirm": true,
+"llama-vscode.tool_run_terminal_command_enabled": true,
+"llama-vscode.tool_search_source_enabled": true,
+"llama-vscode.tool_read_file_enabled": true,
+"llama-vscode.tool_list_directory_enabled": true,
+"llama-vscode.tool_regex_search_enabled": true,
+"llama-vscode.tool_delete_file_enabled": true,
+"llama-vscode.tool_edit_file_enabled": true,
+"llama-vscode.tool_ask_user_enabled": true,
+"llama-vscode.tool_update_todo_list_enabled": true
+```
+
+**Settings explained:**
+- `enabled` — Turn on the extension
+- `auto` — Auto-show completions while typing
+- `rag_enabled` — Enable Retrieval-Augmented Generation for semantic search
+- `env_start_last_used` — Remember which environment was active last time
+- `env_start_last_used_confirm` — Ask before auto-starting the last environment
+- Tool flags — Enable/disable specific extension capabilities (search, file operations, regex, etc.)
+
+### Step 7: Start the Server and Test
+
+In VS Code, open the llama.vscode panel:
+1. Click the **Llama** icon in the left sidebar (or use Cmd+Shift+P → "llama: select environment")
+2. Select your environment: **"Intel Mac CPU-Only (16GB RAM) - Full Stack"**
+3. Click **"Yes"** when prompted to confirm
+
+The extension will:
+1. Launch all 4 `llama-server` instances with your chosen environment
+2. Download and load the models (first run takes ~30-60 seconds total)
+3. Show server status in the VS Code panel
+
+**Monitor the services:**
+```bash
+# In another terminal, check health of all services
+curl http://127.0.0.1:8000/health  # Completions (Qwen2.5-Coder)
+curl http://127.0.0.1:8011/health  # Chat (Qwen2.5-Coder-Instruct)
+curl http://127.0.0.1:8010/health  # Embeddings (Nomic)
+curl http://127.0.0.1:8009/health  # Tools (Qwen3.5-2B)
+
+# All should return: {"status":"ok"}
+```
+
+### Step 8: Test Code Completions
+
+Open any code file in VS Code (e.g., `test.py`, `main.js`) and start typing. The extension will:
+- Trigger completion requests as you pause (respecting `debounce_ms`)
+- Show suggestions inline in your editor
+- Display inferred context from your code
+
+Example in Python:
+```python
+def calculate_sum(numbers):
+    """Calculate the sum of a list of numbers."""
+    # Type here: the model will suggest the next line
+    
+```
+
+### Troubleshooting
+
+**Problem: `llama-server: command not found`**
+- Verify Homebrew installation: `which llama-server` should return `/usr/local/bin/llama-server`
+- If not found, install: `brew install llama.cpp`
+- Restart VS Code to pick up PATH changes
+
+**Problem: Ports already in use (8000, 8009, 8010, 8011)**
+- Kill stray processes: `pkill -f llama-server`
+- Wait 2 seconds, then try starting environment again
+
+**Problem: Models load slowly (>1 minute)**
+- Normal on CPU. First run with model initialization takes ~30-60 seconds total
+- Subsequent completions are cached and faster (~2-5 seconds per request)
+- Performance improves as context builds
+
+**Problem: "AI not responding" in VS Code**
+- Check that all 4 services started: `ps aux | grep llama-server` should show 4 processes
+- Verify ports are listening: `lsof -i -P -n | grep llama`
+- Check settings.json has correct environment selected in `llama-vscode.environments`
+- Review VS Code Output panel (View → Output → "llama.vscode") for errors
+
+**Tip: Check actual inference speed**
+```bash
+# Test completions endpoint
+curl -X POST http://127.0.0.1:8000/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"def hello():", "n_predict":20}'
+
+# Test chat endpoint
+curl -X POST http://127.0.0.1:8011/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hello"}]}'
+```
+- If you have patience issues, use a smaller model (e.g., Gemma-4-9B-it)
+
+**Problem: VS Code crashes with OOM errors**
+- Reduce context: Change `-c 2048` to `-c 1024` or lower
+- Reduce threads: Change `-t 4` to `-t 2` if you have limited RAM bandwidth
+- Use a smaller model
+
+**Problem: Completions are very slow**
+- Expect ~3-5 tokens/sec on Intel i5 with 26B model
+- This is normal for CPU inference; use GPU offloading if available
+- Reduce `n_predict` to 128 for faster feedback
+
+**Problem: Extension doesn't connect to server**
+- Check server is running: `curl http://localhost:8000/health`
+- Check firewall isn't blocking localhost:8000
+- Verify `endpoint` in settings matches server port
+- Check extension logs: VS Code Output panel → Select "Llama.vscode" from dropdown
+
+### Performance Tips
+
+1. **Use smaller models for faster feedback**: Gemma-4-9B generates ~8-12 tokens/sec
+2. **Reduce context window** for faster initial responses: `-c 1024` or `-c 512`
+3. **Adjust debounce**: Increase `debounce_ms` to 1000 if you want fewer requests
+4. **Limit prediction tokens**: Reduce `n_predict` to 128 for quicker completions
+5. **Monitor RAM usage**: Watch Activity Monitor; if you hit swap, reduce `-t` or `-c`
+
+### Next Steps
+
+- Explore the llama.vscode documentation: https://github.com/ggml-org/llama.vscode
+- Try other models: Gemma-4-9B (faster), Qwen2.5-Coder (specialized for code)
+- Set up embeddings for RAG (Retrieval-Augmented Generation) over your codebase
+- Configure multiple environments for different tasks (completions, chat, tools)
+
 ## Description
 
 The main goal of `llama.cpp` is to enable LLM inference with minimal setup and state-of-the-art performance on a wide
